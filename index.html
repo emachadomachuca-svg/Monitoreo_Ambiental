@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tablero Monitoreo Ambiental — Ciénaga</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f4f6f8;color:#1a1a1a;padding:20px}
+.dash{max-width:1200px;margin:0 auto}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:12px;background:#fff;padding:16px 20px;border-radius:12px;border:0.5px solid #ddd}
+.title-block h1{font-size:20px;font-weight:600;color:#1a1a1a}
+.title-block p{font-size:13px;color:#666;margin-top:3px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filters label{font-size:13px;color:#555}
+select{font-size:13px;padding:7px 12px;border:1px solid #ccc;border-radius:8px;background:#fff;color:#1a1a1a;cursor:pointer;outline:none}
+select:focus{border-color:#378ADD}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1.5rem}
+.kpi{background:#fff;border-radius:10px;padding:14px 16px;border:0.5px solid #e0e0e0}
+.kpi-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.kpi-val{font-size:23px;font-weight:600;color:#1a1a1a}
+.kpi-sub{font-size:11px;margin-top:3px}
+.status-ok{color:#0F6E56}
+.status-warn{color:#854F0B}
+.status-bad{color:#A32D2D}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.5rem}
+.chart-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:12px;padding:16px}
+.chart-card.full{grid-column:1/-1}
+.chart-title{font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:10px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#555}
+.leg-dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+.table-wrap{overflow-x:auto}
+table{width:100%;font-size:12px;border-collapse:collapse}
+th{font-weight:600;font-size:11px;color:#666;text-align:left;padding:8px 10px;border-bottom:1px solid #e8e8e8;background:#fafafa;white-space:nowrap}
+td{padding:8px 10px;border-bottom:0.5px solid #f0f0f0;color:#1a1a1a}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.pill{display:inline-block;font-size:11px;padding:2px 10px;border-radius:20px;font-weight:600}
+.pill-ok{background:#E1F5EE;color:#0F6E56}
+.pill-warn{background:#FAEEDA;color:#854F0B}
+.pill-bad{background:#FCEBEB;color:#A32D2D}
+.footer{text-align:center;font-size:11px;color:#aaa;margin-top:2rem;padding-top:1rem;border-top:0.5px solid #e0e0e0}
+@media(max-width:700px){.charts-grid{grid-column:1fr!important;grid-template-columns:1fr!important}.chart-card.full{grid-column:1}}
+</style>
+</head>
+<body>
+<div class="dash">
+  <div class="header">
+    <div class="title-block">
+      <h1>Monitoreo Ambiental — Ciénaga</h1>
+      <p>Puntos P1–P4 &nbsp;·&nbsp; Octubre 2025 – Enero 2026</p>
+    </div>
+    <div class="filters">
+      <label>Mes:</label>
+      <select id="sel-mes">
+        <option value="Todos">Todos los meses</option>
+        <option value="Octubre">Octubre</option>
+        <option value="Noviembre">Noviembre</option>
+        <option value="Diciembre">Diciembre</option>
+        <option value="Enero">Enero</option>
+      </select>
+      <label>Punto:</label>
+      <select id="sel-punto">
+        <option value="Todos">Todos los puntos</option>
+        <option value="P1">P1</option>
+        <option value="P2">P2</option>
+        <option value="P3">P3</option>
+        <option value="P4">P4</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="kpi-grid" id="kpis"></div>
+
+  <div class="charts-grid">
+    <div class="chart-card full">
+      <div class="chart-title">pH — evolución temporal por punto</div>
+      <div class="legend" id="leg-ph"></div>
+      <div style="position:relative;height:240px"><canvas id="c-ph" role="img" aria-label="Gráfica de líneas del pH por punto a lo largo del tiempo"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Temperatura (°C)</div>
+      <div class="legend" id="leg-temp"></div>
+      <div style="position:relative;height:210px"><canvas id="c-temp" role="img" aria-label="Temperatura por punto"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Turbidez (cm)</div>
+      <div class="legend" id="leg-turb"></div>
+      <div style="position:relative;height:210px"><canvas id="c-turb" role="img" aria-label="Turbidez por punto"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">TDS — sólidos disueltos (mg/L)</div>
+      <div class="legend" id="leg-tds"></div>
+      <div style="position:relative;height:210px"><canvas id="c-tds" role="img" aria-label="TDS por punto"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Oxígeno disuelto (mg/L)</div>
+      <div class="legend" id="leg-ox"></div>
+      <div style="position:relative;height:210px"><canvas id="c-ox" role="img" aria-label="Oxígeno disuelto por punto"></canvas></div>
+    </div>
+    <div class="chart-card full">
+      <div class="chart-title">Comparativo por punto — promedios del periodo seleccionado</div>
+      <div style="position:relative;height:230px"><canvas id="c-bar" role="img" aria-label="Comparativo de parámetros entre puntos"></canvas></div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">Resumen estadístico por punto</div>
+    <div class="table-wrap"><table id="tbl"></table></div>
+  </div>
+
+  <div class="footer">Tablero de Monitoreo Ambiental — Universidad de Córdoba · Generado con datos de campo Oct 2025 – Ene 2026</div>
+</div>
+
+<script>
+const RAW=[{"punto":"P1","fecha":"2025-10-10","mes":"Octubre","pH":7.7,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":144,"temperatura":25,"turbidez":23},{"punto":"P1","fecha":"2025-10-11","mes":"Octubre","pH":7.07,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":0,"tds":137,"temperatura":28,"turbidez":35},{"punto":"P1","fecha":"2025-10-13","mes":"Octubre","pH":7.8,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":173,"temperatura":28,"turbidez":25},{"punto":"P1","fecha":"2025-10-15","mes":"Octubre","pH":7.3,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":177,"temperatura":29,"turbidez":30},{"punto":"P1","fecha":"2025-10-18","mes":"Octubre","pH":7.3,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":110,"temperatura":28,"turbidez":16},{"punto":"P1","fecha":"2025-10-22","mes":"Octubre","pH":7.5,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":104,"temperatura":27,"turbidez":16},{"punto":"P1","fecha":"2025-10-25","mes":"Octubre","pH":7.3,"nitrito":10,"nitrato":10,"fosfatos":500,"oxigeno":0,"tds":164,"temperatura":26,"turbidez":45},{"punto":"P1","fecha":"2025-10-27","mes":"Octubre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":173,"temperatura":28,"turbidez":43},{"punto":"P1","fecha":"2025-10-30","mes":"Octubre","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":110,"temperatura":28,"turbidez":15},{"punto":"P1","fecha":"2025-11-07","mes":"Noviembre","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":225,"temperatura":30,"turbidez":36},{"punto":"P1","fecha":"2025-11-10","mes":"Noviembre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":287,"temperatura":28,"turbidez":35},{"punto":"P1","fecha":"2025-11-17","mes":"Noviembre","pH":6.8,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":320,"temperatura":30,"turbidez":34},{"punto":"P1","fecha":"2025-11-19","mes":"Noviembre","pH":7.3,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":270,"temperatura":28,"turbidez":35},{"punto":"P1","fecha":"2025-11-20","mes":"Noviembre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":268,"temperatura":28,"turbidez":38},{"punto":"P1","fecha":"2025-12-05","mes":"Diciembre","pH":7.0,"nitrito":0,"nitrato":10,"fosfatos":300,"oxigeno":4.3,"tds":218,"temperatura":30,"turbidez":30},{"punto":"P1","fecha":"2025-12-06","mes":"Diciembre","pH":7.5,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":3.7,"tds":436,"temperatura":29,"turbidez":29},{"punto":"P1","fecha":"2025-12-10","mes":"Diciembre","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":2.9,"tds":472,"temperatura":28,"turbidez":37},{"punto":"P1","fecha":"2025-12-09","mes":"Diciembre","pH":6.6,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":2.4,"tds":225,"temperatura":28,"turbidez":37},{"punto":"P1","fecha":"2026-01-03","mes":"Enero","pH":9.4,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.3,"tds":258,"temperatura":28,"turbidez":43},{"punto":"P1","fecha":"2026-01-04","mes":"Enero","pH":9.7,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.5,"tds":249,"temperatura":28,"turbidez":48},{"punto":"P1","fecha":"2026-01-08","mes":"Enero","pH":10.4,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":2.4,"tds":236,"temperatura":28,"turbidez":36},{"punto":"P1","fecha":"2026-01-10","mes":"Enero","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.09,"tds":271,"temperatura":28,"turbidez":45},{"punto":"P1","fecha":"2026-01-11","mes":"Enero","pH":9.3,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":2.0,"tds":416,"temperatura":28,"turbidez":36},{"punto":"P1","fecha":"2026-01-13","mes":"Enero","pH":10.4,"nitrito":0,"nitrato":10,"fosfatos":100,"oxigeno":4.3,"tds":131,"temperatura":28,"turbidez":10},{"punto":"P1","fecha":"2026-01-14","mes":"Enero","pH":9.1,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":3.2,"tds":212,"temperatura":28,"turbidez":25},{"punto":"P1","fecha":"2026-01-17","mes":"Enero","pH":9.5,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.7,"tds":243,"temperatura":28,"turbidez":40},{"punto":"P1","fecha":"2026-01-20","mes":"Enero","pH":9.2,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.5,"tds":255,"temperatura":28,"turbidez":42},{"punto":"P1","fecha":"2026-01-25","mes":"Enero","pH":9.7,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.5,"tds":261,"temperatura":28,"turbidez":39},{"punto":"P1","fecha":"2026-01-26","mes":"Enero","pH":9.7,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.2,"tds":269,"temperatura":28,"turbidez":40},{"punto":"P2","fecha":"2025-10-10","mes":"Octubre","pH":6.9,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":144,"temperatura":27,"turbidez":35},{"punto":"P2","fecha":"2025-10-11","mes":"Octubre","pH":6.9,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":140,"temperatura":29,"turbidez":35},{"punto":"P2","fecha":"2025-10-13","mes":"Octubre","pH":7.6,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":167,"temperatura":28,"turbidez":28},{"punto":"P2","fecha":"2025-10-15","mes":"Octubre","pH":7.1,"nitrito":10,"nitrato":0,"fosfatos":200,"oxigeno":0,"tds":163,"temperatura":28,"turbidez":27},{"punto":"P2","fecha":"2025-10-18","mes":"Octubre","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":114,"temperatura":28,"turbidez":17},{"punto":"P2","fecha":"2025-10-22","mes":"Octubre","pH":7.4,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":110,"temperatura":28,"turbidez":15},{"punto":"P2","fecha":"2025-10-25","mes":"Octubre","pH":7.3,"nitrito":0,"nitrato":10,"fosfatos":200,"oxigeno":0,"tds":169,"temperatura":27,"turbidez":42},{"punto":"P2","fecha":"2025-10-27","mes":"Octubre","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":165,"temperatura":28,"turbidez":39},{"punto":"P2","fecha":"2025-10-30","mes":"Octubre","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":108,"temperatura":28,"turbidez":15},{"punto":"P2","fecha":"2025-11-07","mes":"Noviembre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":223,"temperatura":28,"turbidez":35},{"punto":"P2","fecha":"2025-11-10","mes":"Noviembre","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":225,"temperatura":28,"turbidez":35},{"punto":"P2","fecha":"2025-11-17","mes":"Noviembre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":242,"temperatura":29,"turbidez":35},{"punto":"P2","fecha":"2025-11-19","mes":"Noviembre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":227,"temperatura":28,"turbidez":35},{"punto":"P2","fecha":"2025-11-20","mes":"Noviembre","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":236,"temperatura":28,"turbidez":37},{"punto":"P2","fecha":"2025-12-05","mes":"Diciembre","pH":7.2,"nitrito":0,"nitrato":10,"fosfatos":200,"oxigeno":4.5,"tds":472,"temperatura":29,"turbidez":26},{"punto":"P2","fecha":"2025-12-06","mes":"Diciembre","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":3.2,"tds":225,"temperatura":28,"turbidez":31},{"punto":"P2","fecha":"2025-12-10","mes":"Diciembre","pH":7.2,"nitrito":50,"nitrato":0,"fosfatos":100,"oxigeno":2.6,"tds":256,"temperatura":28,"turbidez":40},{"punto":"P2","fecha":"2025-12-09","mes":"Diciembre","pH":6.3,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":2.5,"tds":436,"temperatura":28,"turbidez":37},{"punto":"P2","fecha":"2026-01-03","mes":"Enero","pH":9.2,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.1,"tds":249,"temperatura":28,"turbidez":43},{"punto":"P2","fecha":"2026-01-04","mes":"Enero","pH":9.6,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.4,"tds":249,"temperatura":28,"turbidez":44},{"punto":"P2","fecha":"2026-01-08","mes":"Enero","pH":10.1,"nitrito":0,"nitrato":0,"fosfatos":300,"oxigeno":2.05,"tds":498,"temperatura":29,"turbidez":33},{"punto":"P2","fecha":"2026-01-10","mes":"Enero","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.05,"tds":556,"temperatura":28,"turbidez":50},{"punto":"P2","fecha":"2026-01-11","mes":"Enero","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.08,"tds":518,"temperatura":28,"turbidez":41},{"punto":"P2","fecha":"2026-01-13","mes":"Enero","pH":10.02,"nitrito":0,"nitrato":10,"fosfatos":100,"oxigeno":4.3,"tds":154,"temperatura":28,"turbidez":9},{"punto":"P2","fecha":"2026-01-14","mes":"Enero","pH":8.9,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":3.5,"tds":180,"temperatura":28,"turbidez":20},{"punto":"P2","fecha":"2026-01-17","mes":"Enero","pH":9.2,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.6,"tds":247,"temperatura":28,"turbidez":42},{"punto":"P2","fecha":"2026-01-20","mes":"Enero","pH":9.0,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.5,"tds":263,"temperatura":28,"turbidez":40},{"punto":"P2","fecha":"2026-01-25","mes":"Enero","pH":9.1,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":1.4,"tds":277,"temperatura":28,"turbidez":43},{"punto":"P2","fecha":"2026-01-26","mes":"Enero","pH":9.4,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":1.1,"tds":291,"temperatura":28,"turbidez":44},{"punto":"P3","fecha":"2025-10-10","mes":"Octubre","pH":6.8,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":147,"temperatura":28,"turbidez":36},{"punto":"P3","fecha":"2025-10-11","mes":"Octubre","pH":6.3,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":145,"temperatura":28,"turbidez":35},{"punto":"P3","fecha":"2025-10-13","mes":"Octubre","pH":7.4,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":167,"temperatura":27,"turbidez":29},{"punto":"P3","fecha":"2025-10-15","mes":"Octubre","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":0,"tds":173,"temperatura":28,"turbidez":29},{"punto":"P3","fecha":"2025-10-18","mes":"Octubre","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":0,"tds":116,"temperatura":28,"turbidez":15},{"punto":"P3","fecha":"2025-10-22","mes":"Octubre","pH":7.3,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":110,"temperatura":29,"turbidez":15},{"punto":"P3","fecha":"2025-10-25","mes":"Octubre","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":0,"tds":163,"temperatura":27,"turbidez":40},{"punto":"P3","fecha":"2025-10-27","mes":"Octubre","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":171,"temperatura":28,"turbidez":42},{"punto":"P3","fecha":"2025-10-30","mes":"Octubre","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":110,"temperatura":28,"turbidez":15},{"punto":"P3","fecha":"2025-11-07","mes":"Noviembre","pH":6.3,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":235,"temperatura":29,"turbidez":35},{"punto":"P3","fecha":"2025-11-10","mes":"Noviembre","pH":6.5,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":233,"temperatura":28,"turbidez":35},{"punto":"P3","fecha":"2025-11-17","mes":"Noviembre","pH":6.5,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":232,"temperatura":29,"turbidez":30},{"punto":"P3","fecha":"2025-11-19","mes":"Noviembre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":237,"temperatura":28,"turbidez":35},{"punto":"P3","fecha":"2025-11-20","mes":"Noviembre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":239,"temperatura":29,"turbidez":38},{"punto":"P3","fecha":"2025-12-05","mes":"Diciembre","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":5.5,"tds":450,"temperatura":29,"turbidez":25},{"punto":"P3","fecha":"2025-12-06","mes":"Diciembre","pH":7.5,"nitrito":10,"nitrato":0,"fosfatos":0,"oxigeno":5.2,"tds":256,"temperatura":28,"turbidez":30},{"punto":"P3","fecha":"2025-12-10","mes":"Diciembre","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":2.3,"tds":189,"temperatura":26,"turbidez":42},{"punto":"P3","fecha":"2025-12-09","mes":"Diciembre","pH":6.8,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":4.7,"tds":498,"temperatura":28,"turbidez":17},{"punto":"P3","fecha":"2026-01-03","mes":"Enero","pH":9.4,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0.9,"tds":498,"temperatura":28,"turbidez":47},{"punto":"P3","fecha":"2026-01-04","mes":"Enero","pH":9.5,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.2,"tds":249,"temperatura":28,"turbidez":45},{"punto":"P3","fecha":"2026-01-08","mes":"Enero","pH":10.01,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":2.1,"tds":496,"temperatura":28,"turbidez":35},{"punto":"P3","fecha":"2026-01-10","mes":"Enero","pH":6.6,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.05,"tds":558,"temperatura":28,"turbidez":52},{"punto":"P3","fecha":"2026-01-11","mes":"Enero","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":1.03,"tds":458,"temperatura":28,"turbidez":44},{"punto":"P3","fecha":"2026-01-13","mes":"Enero","pH":9.8,"nitrito":0,"nitrato":10,"fosfatos":100,"oxigeno":4.4,"tds":147,"temperatura":28,"turbidez":15},{"punto":"P3","fecha":"2026-01-14","mes":"Enero","pH":9.1,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":3.9,"tds":183,"temperatura":28,"turbidez":25},{"punto":"P3","fecha":"2026-01-17","mes":"Enero","pH":9.0,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.5,"tds":237,"temperatura":28,"turbidez":49},{"punto":"P3","fecha":"2026-01-20","mes":"Enero","pH":8.8,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.5,"tds":244,"temperatura":28,"turbidez":45},{"punto":"P3","fecha":"2026-01-25","mes":"Enero","pH":9.1,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.2,"tds":269,"temperatura":28,"turbidez":47},{"punto":"P3","fecha":"2026-01-26","mes":"Enero","pH":9.0,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0.8,"tds":276,"temperatura":29,"turbidez":47},{"punto":"P4","fecha":"2025-10-10","mes":"Octubre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":148,"temperatura":26,"turbidez":36},{"punto":"P4","fecha":"2025-10-11","mes":"Octubre","pH":7.6,"nitrito":0,"nitrato":0,"fosfatos":500,"oxigeno":0,"tds":151,"temperatura":27,"turbidez":30},{"punto":"P4","fecha":"2025-10-15","mes":"Octubre","pH":7.7,"nitrito":0,"nitrato":0,"fosfatos":200,"oxigeno":0,"tds":169,"temperatura":28,"turbidez":29},{"punto":"P4","fecha":"2025-10-18","mes":"Octubre","pH":7.5,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":110,"temperatura":27,"turbidez":16},{"punto":"P4","fecha":"2025-10-22","mes":"Octubre","pH":7.8,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":105,"temperatura":28,"turbidez":16},{"punto":"P4","fecha":"2025-10-25","mes":"Octubre","pH":7.6,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":172,"temperatura":27,"turbidez":39},{"punto":"P4","fecha":"2025-10-27","mes":"Octubre","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":170,"temperatura":28,"turbidez":41},{"punto":"P4","fecha":"2025-10-30","mes":"Octubre","pH":7.6,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":104,"temperatura":28,"turbidez":18},{"punto":"P4","fecha":"2025-11-07","mes":"Noviembre","pH":7.2,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":227,"temperatura":30,"turbidez":35},{"punto":"P4","fecha":"2025-11-10","mes":"Noviembre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":219,"temperatura":28,"turbidez":35},{"punto":"P4","fecha":"2025-11-17","mes":"Noviembre","pH":7.3,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":216,"temperatura":30,"turbidez":33},{"punto":"P4","fecha":"2025-11-19","mes":"Noviembre","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":0,"tds":228,"temperatura":28,"turbidez":35},{"punto":"P4","fecha":"2025-11-20","mes":"Noviembre","pH":7.1,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":0,"tds":254,"temperatura":28,"turbidez":36},{"punto":"P4","fecha":"2025-12-05","mes":"Diciembre","pH":7.4,"nitrito":10,"nitrato":0,"fosfatos":100,"oxigeno":4.0,"tds":225,"temperatura":28,"turbidez":26},{"punto":"P4","fecha":"2025-12-06","mes":"Diciembre","pH":8.0,"nitrito":10,"nitrato":0,"fosfatos":100,"oxigeno":3.31,"tds":390,"temperatura":28,"turbidez":30},{"punto":"P4","fecha":"2025-12-10","mes":"Diciembre","pH":7.5,"nitrito":50,"nitrato":0,"fosfatos":0,"oxigeno":3.0,"tds":462,"temperatura":26,"turbidez":39},{"punto":"P4","fecha":"2025-12-09","mes":"Diciembre","pH":6.2,"nitrito":0,"nitrato":0,"fosfatos":0,"oxigeno":2.7,"tds":450,"temperatura":28,"turbidez":28},{"punto":"P4","fecha":"2026-01-03","mes":"Enero","pH":10.2,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.3,"tds":256,"temperatura":28,"turbidez":40},{"punto":"P4","fecha":"2026-01-04","mes":"Enero","pH":9.9,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.5,"tds":251,"temperatura":28,"turbidez":50},{"punto":"P4","fecha":"2026-01-08","mes":"Enero","pH":11.1,"nitrito":0,"nitrato":0,"fosfatos":300,"oxigeno":2.6,"tds":249,"temperatura":28,"turbidez":31},{"punto":"P4","fecha":"2026-01-10","mes":"Enero","pH":7.0,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.09,"tds":276,"temperatura":28,"turbidez":46},{"punto":"P4","fecha":"2026-01-11","mes":"Enero","pH":9.8,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.07,"tds":416,"temperatura":28,"turbidez":50},{"punto":"P4","fecha":"2026-01-13","mes":"Enero","pH":10.9,"nitrito":0,"nitrato":10,"fosfatos":100,"oxigeno":4.5,"tds":123,"temperatura":28,"turbidez":18},{"punto":"P4","fecha":"2026-01-14","mes":"Enero","pH":9.8,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":3.3,"tds":237,"temperatura":28,"turbidez":23},{"punto":"P4","fecha":"2026-01-17","mes":"Enero","pH":9.8,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.9,"tds":179,"temperatura":28,"turbidez":40},{"punto":"P4","fecha":"2026-01-20","mes":"Enero","pH":9.7,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.8,"tds":180,"temperatura":28,"turbidez":40},{"punto":"P4","fecha":"2026-01-25","mes":"Enero","pH":9.9,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.3,"tds":285,"temperatura":28,"turbidez":40},{"punto":"P4","fecha":"2026-01-26","mes":"Enero","pH":10.3,"nitrito":0,"nitrato":0,"fosfatos":100,"oxigeno":1.3,"tds":322,"temperatura":28,"turbidez":39}];
+
+const COLORS={P1:'#378ADD',P2:'#1D9E75',P3:'#BA7517',P4:'#A32D2D'};
+const PUNTOS=['P1','P2','P3','P4'];
+
+let charts={};
+
+function avg(arr){const v=arr.filter(x=>x!=null&&!isNaN(x));return v.length?v.reduce((a,b)=>a+b,0)/v.length:null}
+function mn(arr){const v=arr.filter(x=>x!=null&&!isNaN(x));return v.length?Math.min(...v):null}
+function mx(arr){const v=arr.filter(x=>x!=null&&!isNaN(x));return v.length?Math.max(...v):null}
+function f2(n){return n!=null?n.toFixed(2):'—'}
+function f1(n){return n!=null?n.toFixed(1):'—'}
+
+function filtered(){
+  const mes=document.getElementById('sel-mes').value;
+  const pt=document.getElementById('sel-punto').value;
+  return RAW.filter(d=>(mes==='Todos'||d.mes===mes)&&(pt==='Todos'||d.punto===pt));
+}
+
+function phStatus(v){if(v==null)return'';if(v>=6.5&&v<=8.5)return'ok';if(v<6||v>9)return'bad';return'warn';}
+function oxStatus(v){if(v==null)return'';if(v<=0)return'warn';if(v>=5)return'ok';if(v>=3)return'warn';return'bad';}
+function turbStatus(v){if(v==null)return'';if(v<=30)return'ok';if(v<=45)return'warn';return'bad';}
+const statusLabel={ok:'Normal',warn:'Alerta',bad:'Crítico'};
+const statusClass={ok:'status-ok',warn:'status-warn',bad:'status-bad'};
+
+function renderKPIs(data){
+  const pH=avg(data.map(d=>d.pH));
+  const ox=avg(data.map(d=>d.oxigeno));
+  const temp=avg(data.map(d=>d.temperatura));
+  const turb=avg(data.map(d=>d.turbidez));
+  const tds=avg(data.map(d=>d.tds));
+  const fos=avg(data.map(d=>d.fosfatos));
+  const kpis=[
+    {label:'pH promedio',val:f2(pH),sub:statusLabel[phStatus(pH)]||'',cls:statusClass[phStatus(pH)]||''},
+    {label:'Oxígeno disuelto',val:(ox!=null?f1(ox):'—')+' mg/L',sub:statusLabel[oxStatus(ox)]||'',cls:statusClass[oxStatus(ox)]||''},
+    {label:'Temperatura',val:(temp!=null?f1(temp):'—')+'°C',sub:'Rango normal: 25–30°C',cls:''},
+    {label:'Turbidez',val:(turb!=null?f1(turb):'—')+' cm',sub:statusLabel[turbStatus(turb)]||'',cls:statusClass[turbStatus(turb)]||''},
+    {label:'TDS',val:(tds!=null?Math.round(tds):'—')+' mg/L',sub:'Sólidos disueltos',cls:''},
+    {label:'Fosfatos prom.',val:(fos!=null?Math.round(fos):'—')+' ppm',sub:'',cls:''},
+    {label:'Registros',val:data.length,sub:'observaciones',cls:''},
+  ];
+  document.getElementById('kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-val">${k.val}</div><div class="kpi-sub ${k.cls}">${k.sub}</div></div>`).join('');
+}
+
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function makeLegend(elId,pts){
+  document.getElementById(elId).innerHTML=pts.map(p=>`<span class="leg-item"><span class="leg-dot" style="background:${COLORS[p]}"></span>${p}</span>`).join('');
+}
+
+function lineChart(id,data,field,ptFilter){
+  destroyChart(id);
+  const pts=ptFilter==='Todos'?PUNTOS:[ptFilter];
+  const legId='leg-'+id.replace('c-','');
+  if(document.getElementById(legId)) makeLegend(legId,pts);
+  const allDates=[...new Set(data.map(d=>d.fecha))].sort();
+  const datasets=pts.map(p=>({
+    label:p,
+    data:allDates.map(f=>{const r=data.find(d=>d.punto===p&&d.fecha===f);return r&&r[field]!=null?+r[field]:null}),
+    borderColor:COLORS[p],backgroundColor:COLORS[p]+'22',
+    tension:.3,pointRadius:3,borderWidth:2,spanGaps:true,
+    borderDash:p==='P2'?[5,3]:p==='P3'?[2,2]:p==='P4'?[8,3]:[]
+  }));
+  charts[id]=new Chart(document.getElementById(id),{type:'line',data:{labels:allDates,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{maxRotation:45,font:{size:10},autoSkip:true,maxTicksLimit:10},grid:{display:false}},y:{grid:{color:'rgba(0,0,0,.06)'},ticks:{font:{size:10}}}}}});
+}
+
+function barChart(data){
+  destroyChart('c-bar');
+  const pts=document.getElementById('sel-punto').value==='Todos'?PUNTOS:[document.getElementById('sel-punto').value];
+  const params=['pH','temperatura','turbidez'];
+  const colors=['#378ADD','#1D9E75','#BA7517'];
+  const datasets=params.map((p,i)=>({label:p,data:pts.map(pt=>{const v=avg(data.filter(d=>d.punto===pt).map(d=>d[p]));return v!=null?+v.toFixed(2):null}),backgroundColor:colors[i]+'cc',borderColor:colors[i],borderWidth:1}));
+  charts['c-bar']=new Chart(document.getElementById('c-bar'),{type:'bar',data:{labels:pts,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{font:{size:11},boxWidth:12}}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,0,0,.06)'}}}}});
+}
+
+function renderTable(data){
+  const pts=document.getElementById('sel-punto').value==='Todos'?PUNTOS:[document.getElementById('sel-punto').value];
+  const headers=['Punto','pH prom','pH mín','pH máx','Temp. prom','Turbidez prom','TDS prom','O₂ prom','Estado pH'];
+  let html=`<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+  pts.forEach(p=>{
+    const d=data.filter(x=>x.punto===p);
+    const phA=avg(d.map(x=>x.pH));
+    const sta=phStatus(phA);
+    html+=`<tr><td><strong>${p}</strong></td><td>${f2(phA)}</td><td>${f2(mn(d.map(x=>x.pH)))}</td><td>${f2(mx(d.map(x=>x.pH)))}</td><td>${f1(avg(d.map(x=>x.temperatura)))}°C</td><td>${f1(avg(d.map(x=>x.turbidez)))} cm</td><td>${Math.round(avg(d.map(x=>x.tds)))||'—'}</td><td>${f1(avg(d.map(x=>x.oxigeno)))}</td><td><span class="pill pill-${sta||'ok'}">${statusLabel[sta]||'—'}</span></td></tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('tbl').innerHTML=html;
+}
+
+function render(){
+  const data=filtered();
+  const pt=document.getElementById('sel-punto').value;
+  renderKPIs(data);
+  lineChart('c-ph',data,'pH',pt);
+  lineChart('c-temp',data,'temperatura',pt);
+  lineChart('c-turb',data,'turbidez',pt);
+  lineChart('c-tds',data,'tds',pt);
+  lineChart('c-ox',data,'oxigeno',pt);
+  barChart(data);
+  renderTable(data);
+}
+
+document.getElementById('sel-mes').addEventListener('change',render);
+document.getElementById('sel-punto').addEventListener('change',render);
+render();
+</script>
+</body>
+</html>
