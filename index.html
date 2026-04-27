@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard POSIT — Universidad de Córdoba</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root{
+  --verde:#2E7D32;--cafe:#6D4C41;
+  --rojo:#C62828;--rojo-l:#FFEBEE;--rojo-t:#7F0000;
+  --ambar:#F57F17;--ambar-l:#FFF8E1;--ambar-t:#6D3B00;
+  --ok:#2E7D32;--ok-l:#E8F5E9;--ok-t:#1B5E20;
+  --bg:#F5F4F0;--card:#fff;--borde:#E0DDD6;--texto:#1C1C1A;--muted:#6B6860;
+  --c1:#4A90D9;--c2:#E8763A;--c3:#6BAF6B;--c4:#9B6BB5;--c5:#D4A017;--c6:#3AADAD;--c7:#D96A6A;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--texto);min-height:100vh}
+/* HEADER — colores institucionales */
+.hdr{background:linear-gradient(135deg,var(--verde) 0%,#388E3C 60%,var(--cafe) 100%)}
+.hdr-inner{max-width:1100px;margin:0 auto;padding:18px 24px;display:flex;align-items:center;gap:14px}
+.hdr-logo{width:44px;height:44px;background:rgba(255,255,255,.18);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.hdr-text h1{font-size:1.1rem;font-weight:700;color:#fff}
+.hdr-text p{font-size:0.76rem;color:rgba(255,255,255,.8);margin-top:2px}
+.hdr-badge{margin-left:auto;background:rgba(255,255,255,.2);border-radius:20px;padding:5px 14px;font-size:0.72rem;font-weight:700;color:#fff;white-space:nowrap}
+/* FILTRO SEDE — solo para riesgo POSIT */
+.filtro-bar{background:#fff;border-bottom:1px solid var(--borde);padding:0}
+.filtro-inner{max-width:1100px;margin:0 auto;padding:10px 24px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filtro-label{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.btn-sede{padding:6px 14px;border-radius:20px;border:1.5px solid;cursor:pointer;font-size:0.78rem;font-weight:700;background:transparent;transition:all .2s}
+.btn-sede.active{color:#fff!important}
+.filtro-nota{font-size:0.71rem;color:var(--muted);font-style:italic;margin-left:4px}
+/* TABS */
+.nav{background:#fff;border-bottom:1px solid var(--borde)}
+.nav-inner{max-width:1100px;margin:0 auto;padding:0 24px;display:flex;gap:4px}
+.tab{padding:12px 16px;font-size:0.83rem;font-weight:600;color:var(--muted);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;transition:all .15s}
+.tab:hover{color:var(--texto)}
+.tab.on{color:var(--verde);border-bottom-color:var(--verde)}
+.panel{display:none}.panel.on{display:block}
+/* MAIN */
+.main{max-width:1100px;margin:0 auto;padding:22px 24px}
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--borde);border-radius:11px;padding:15px;border-left:4px solid var(--c1)}
+.kpi-val{font-size:1.9rem;font-weight:800;color:var(--c1)}
+.kpi-lab{font-size:0.72rem;color:var(--muted);margin-top:3px;font-weight:600;line-height:1.3}
+.kpi-sub{font-size:0.68rem;color:var(--muted);margin-top:2px}
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px}
+/* CHART CARD */
+.cc{background:var(--card);border:1px solid var(--borde);border-radius:11px;padding:18px}
+/* encabezado tabla — color institucional */
+.cc h3{font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+        color:#fff;background:var(--verde);margin:-18px -18px 14px -18px;
+        padding:9px 18px;border-radius:11px 11px 0 0}
+.cw{position:relative;height:230px}
+.cw-lg{position:relative;height:290px}
+/* FILTRO INFO */
+.fi{font-size:0.74rem;color:var(--ok-t);background:var(--ok-l);border:1px solid #C8E6C9;border-radius:7px;padding:5px 12px;margin-bottom:12px;display:none}
+.fi.on{display:block}
+/* SUBESCALA BARS */
+.sub-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.sub-lbl{font-size:0.76rem;color:var(--texto);width:110px;flex-shrink:0}
+.sub-track{flex:1;height:8px;background:#E8E6E0;border-radius:4px;overflow:hidden}
+.sub-fill{height:100%;border-radius:4px;transition:width .4s}
+.sub-pct{font-size:0.74rem;font-weight:700;width:36px;text-align:right}
+/* HEATMAP */
+.ht{width:100%;border-collapse:collapse;font-size:0.78rem}
+.ht th{background:var(--cafe);color:#fff;padding:7px 9px;text-align:center;font-size:0.7rem;font-weight:700}
+.ht th:first-child{text-align:left}
+.ht td{padding:6px 9px;text-align:center;font-weight:600;border-bottom:1px solid var(--borde)}
+.ht td:first-child{text-align:left;font-weight:700}
+/* PILL */
+.pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:700}
+.p-r{background:var(--rojo-l);color:var(--rojo-t)}
+.p-a{background:var(--ambar-l);color:var(--ambar-t)}
+.p-v{background:var(--ok-l);color:var(--ok-t)}
+@media(max-width:700px){.kpi-grid,.g2,.g3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- HEADER — colores institucionales UNICOR -->
+<div class="hdr">
+  <div class="hdr-inner">
+    <div class="hdr-logo">🌿</div>
+    <div class="hdr-text">
+      <h1>Dashboard POSIT — Universidad de Córdoba</h1>
+      <p>Predicción de comportamientos de riesgo psicosocial · Semillero Mostaza · n = 311 estudiantes</p>
+    </div>
+    <div class="hdr-badge">UNICORDOBA</div>
+  </div>
+</div>
+
+<!-- FILTRO SEDE — solo afecta pestaña Riesgo POSIT -->
+<div class="filtro-bar" id="filtro-bar">
+  <div class="filtro-inner">
+    <span class="filtro-label">Filtrar por sede:</span>
+    <button class="btn-sede active" style="border-color:#4A90D9;color:#4A90D9" onclick="setSede('TODAS',this)">Todas</button>
+    <button class="btn-sede" style="border-color:#2E7D32;color:#2E7D32" onclick="setSede('MONTERIA',this)">Montería</button>
+    <button class="btn-sede" style="border-color:#6D4C41;color:#6D4C41" onclick="setSede('BERASTEGUI',this)">Berástegui</button>
+    <button class="btn-sede" style="border-color:#388E3C;color:#388E3C" onclick="setSede('LORICA',this)">Lorica</button>
+    <button class="btn-sede" style="border-color:#795548;color:#795548" onclick="setSede('SAHAGUN',this)">Sahagún</button>
+    <span class="filtro-nota">· Este filtro aplica solo en la pestaña Riesgo POSIT</span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="nav">
+  <div class="nav-inner">
+    <button class="tab on"  onclick="showTab('riesgo',this)">🎯 Riesgo POSIT</button>
+    <button class="tab"     onclick="showTab('socio',this)">👥 Sociodemografía</button>
+    <button class="tab"     onclick="showTab('familia',this)">🏠 Familia y entorno</button>
+    <button class="tab"     onclick="showTab('habitos',this)">⚡ Hábitos</button>
+    <button class="tab"     onclick="showTab('sedes',this)">📍 Por sede</button>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ═══ RIESGO POSIT ═══ -->
+<div id="tab-riesgo" class="panel on">
+  <div class="fi" id="fi-riesgo"></div>
+  <div class="kpi-grid" id="kpis-riesgo"></div>
+  <div class="g2">
+    <div class="cc"><h3>Riesgo global</h3><div class="cw"><canvas id="c-global"></canvas></div></div>
+    <div class="cc"><h3>Áreas en riesgo por estudiante</h3><div class="cw"><canvas id="c-areas"></canvas></div></div>
+  </div>
+  <div class="cc"><h3>Prevalencia de riesgo por subescala</h3><div id="sub-bars" style="margin-top:4px"></div></div>
+</div>
+
+<!-- ═══ SOCIODEMOGRAFÍA ═══ -->
+<div id="tab-socio" class="panel">
+  <div class="kpi-grid">
+    <div class="kpi" style="border-left-color:#4A90D9"><div class="kpi-val" style="color:#4A90D9">311</div><div class="kpi-lab">Total muestra</div><div class="kpi-sub">estudiantes adolescentes</div></div>
+    <div class="kpi" style="border-left-color:#6BAF6B"><div class="kpi-val" style="color:#6BAF6B">4</div><div class="kpi-lab">Sedes universitarias</div><div class="kpi-sub">Montería · Berástegui · Lorica · Sahagún</div></div>
+    <div class="kpi" style="border-left-color:#E8763A"><div class="kpi-val" style="color:#E8763A">17</div><div class="kpi-lab">Edad predominante</div><div class="kpi-sub">75.2% de la muestra</div></div>
+    <div class="kpi" style="border-left-color:#9B6BB5"><div class="kpi-val" style="color:#9B6BB5">92%</div><div class="kpi-lab">Estrato 1</div><div class="kpi-sub">Alta vulnerabilidad socioeconómica</div></div>
+  </div>
+  <div class="g2">
+    <div class="cc"><h3>Distribución por sede</h3><div class="cw"><canvas id="c-sede"></canvas></div></div>
+    <div class="cc"><h3>Distribución por sexo</h3><div class="cw"><canvas id="c-sexo"></canvas></div></div>
+    <div class="cc"><h3>Distribución por facultad</h3><div class="cw"><canvas id="c-fac"></canvas></div></div>
+    <div class="cc"><h3>Zona de residencia</h3><div class="cw"><canvas id="c-zona"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ═══ FAMILIA Y ENTORNO ═══ -->
+<div id="tab-familia" class="panel">
+  <div class="kpi-grid">
+    <div class="kpi" style="border-left-color:#4A90D9"><div class="kpi-val" style="color:#4A90D9">48.6%</div><div class="kpi-lab">Vive con ambos padres</div><div class="kpi-sub">151 estudiantes</div></div>
+    <div class="kpi" style="border-left-color:#6BAF6B"><div class="kpi-val" style="color:#6BAF6B">67.5%</div><div class="kpi-lab">Acceso a internet</div><div class="kpi-sub">210 estudiantes</div></div>
+    <div class="kpi" style="border-left-color:#E8763A"><div class="kpi-val" style="color:#E8763A">60.8%</div><div class="kpi-lab">Todos los servicios</div><div class="kpi-sub">189 estudiantes</div></div>
+    <div class="kpi" style="border-left-color:#9B6BB5"><div class="kpi-val" style="color:#9B6BB5">94.9%</div><div class="kpi-lab">Con SISBEN</div><div class="kpi-sub">295 estudiantes</div></div>
+  </div>
+  <div class="g2">
+    <div class="cc"><h3>Con quién vive</h3><div class="cw"><canvas id="c-vive"></canvas></div></div>
+    <div class="cc"><h3>Acceso a servicios básicos</h3><div class="cw"><canvas id="c-serv"></canvas></div></div>
+    <div class="cc"><h3>Nivel educativo de la madre</h3><div class="cw"><canvas id="c-edu-madre"></canvas></div></div>
+    <div class="cc"><h3>Nivel educativo del padre</h3><div class="cw"><canvas id="c-edu-padre"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ═══ HÁBITOS ═══ -->
+<div id="tab-habitos" class="panel">
+  <div class="kpi-grid">
+    <div class="kpi" style="border-left-color:#4A90D9"><div class="kpi-val" style="color:#4A90D9">44.4%</div><div class="kpi-lab">Sueño adecuado (8–10h)</div><div class="kpi-sub">138 estudiantes</div></div>
+    <div class="kpi" style="border-left-color:#C62828"><div class="kpi-val" style="color:#C62828">8.4%</div><div class="kpi-lab">Sueño insuficiente (&lt;6h)</div><div class="kpi-sub">26 estudiantes</div></div>
+    <div class="kpi" style="border-left-color:#E8763A"><div class="kpi-val" style="color:#E8763A">43.4%</div><div class="kpi-lab">Redes sociales 4h+ /día</div><div class="kpi-sub">137 estudiantes</div></div>
+    <div class="kpi" style="border-left-color:#6BAF6B"><div class="kpi-val" style="color:#6BAF6B">45.0%</div><div class="kpi-lab">Actividad física ≥1x/semana</div><div class="kpi-sub">203 estudiantes activos</div></div>
+  </div>
+  <div class="g3">
+    <div class="cc"><h3>Horas de sueño (OMS)</h3><div class="cw"><canvas id="c-sueno"></canvas></div></div>
+    <div class="cc"><h3>Horas en redes sociales / día</h3><div class="cw"><canvas id="c-redes"></canvas></div></div>
+    <div class="cc"><h3>Actividad física semanal</h3><div class="cw"><canvas id="c-actfis"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ═══ POR SEDE ═══ -->
+<div id="tab-sedes" class="panel">
+  <div class="kpi-grid">
+    <div class="kpi" style="border-left-color:#2E7D32"><div class="kpi-val" style="color:#2E7D32">67.7%</div><div class="kpi-lab">Montería</div><div class="kpi-sub">n = 201</div></div>
+    <div class="kpi" style="border-left-color:#6D4C41"><div class="kpi-val" style="color:#6D4C41">84.7%</div><div class="kpi-lab">Berástegui 🔴 más crítica</div><div class="kpi-sub">n = 59</div></div>
+    <div class="kpi" style="border-left-color:#388E3C"><div class="kpi-val" style="color:#388E3C">70.0%</div><div class="kpi-lab">Lorica</div><div class="kpi-sub">n = 30</div></div>
+    <div class="kpi" style="border-left-color:#795548"><div class="kpi-val" style="color:#795548">81.0%</div><div class="kpi-lab">Sahagún</div><div class="kpi-sub">n = 21</div></div>
+  </div>
+  <div class="g2">
+    <div class="cc"><h3>Riesgo global por sede</h3><div class="cw"><canvas id="c-sede-rg"></canvas></div></div>
+    <div class="cc"><h3>Medias POSIT por sede</h3><div class="cw-lg"><canvas id="c-medias"></canvas></div></div>
+  </div>
+  <div class="cc" style="margin-bottom:16px">
+    <h3>Mapa de calor — % riesgo por subescala y sede</h3>
+    <div style="overflow-x:auto;margin-top:4px" id="heatmap"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ── DATOS ─────────────────────────────────────────────────────────────────────
+const LABELS = ['Sustancias','Salud mental','Familia','Amigos','Educativo','Laboral','Conducta'];
+const SEDES  = ['MONTERIA','BERASTEGUI','LORICA','SAHAGUN'];
+const SEDE_L = {MONTERIA:'Montería',BERASTEGUI:'Berástegui',LORICA:'Lorica',SAHAGUN:'Sahagún'};
+const SEDE_C = {MONTERIA:'#2E7D32',BERASTEGUI:'#6D4C41',LORICA:'#388E3C',SAHAGUN:'#795548'};
+const SEDE_DATA = {
+  MONTERIA:  {n:201,rg:67.7,prevs:[6.0,47.8,34.3,26.9,33.8,17.9,19.9],medias:[0.64,4.49,2.12,0.96,2.39,0.59,2.33]},
+  BERASTEGUI:{n:59, rg:84.7,prevs:[15.3,47.5,39.0,42.4,55.9,32.2,42.4],medias:[1.19,5.56,2.42,1.73,3.66,1.17,3.61]},
+  LORICA:    {n:30, rg:70.0,prevs:[10.0,36.7,26.7,36.7,43.3,40.0,33.3],medias:[0.97,4.07,1.87,1.37,2.47,1.13,2.57]},
+  SAHAGUN:   {n:21, rg:81.0,prevs:[14.3,66.7,33.3,23.8,66.7,23.8,47.6],medias:[0.76,5.71,2.71,1.10,4.29,0.81,3.62]}
+};
+const GLOBAL_PREVS = [8.7,47.9,34.4,30.5,41.2,23.2,27.3];
+const N_AREAS = {0:87,1:54,2:56,3:40,4:29,5:22,6:10,7:13};
+// Paleta neutra para gráficas
+const PAL = ['#4A90D9','#E8763A','#6BAF6B','#9B6BB5','#D4A017','#3AADAD','#D96A6A','#7B9EA6'];
+const PAL2 = ['#4A90D9','#6BAF6B','#E8763A','#9B6BB5'];
+// Colores subescalas (no institucionales)
+const SUB_C = ['#4A90D9','#D96A6A','#E8763A','#6BAF6B','#D4A017','#9B6BB5','#3AADAD'];
+
+// ── ESTADO FILTRO ────────────────────────────────────────────────────────────
+let SEDE_ACTIVA = 'TODAS';
+
+function setSede(s, btn) {
+  SEDE_ACTIVA = s;
+  document.querySelectorAll('.btn-sede').forEach(b => {
+    b.classList.remove('active');
+    b.style.background = 'transparent';
+  });
+  btn.classList.add('active');
+  const colors = {TODAS:'#4A90D9',MONTERIA:'#2E7D32',BERASTEGUI:'#6D4C41',LORICA:'#388E3C',SAHAGUN:'#795548'};
+  btn.style.background = colors[s];
+  btn.style.color = '#fff';
+  renderRiesgo();
+}
+
+// ── CHART HELPERS ─────────────────────────────────────────────────────────────
+let charts = {};
+function mk(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  const el = document.getElementById(id); if (!el) return;
+  charts[id] = new Chart(el, cfg);
+}
+const baseOpts = () => ({
+  responsive:true, maintainAspectRatio:false,
+  plugins:{ legend:{ labels:{ color:'#6B6860', font:{size:10} } } },
+  scales:{
+    x:{ ticks:{color:'#6B6860',font:{size:9}}, grid:{color:'rgba(0,0,0,.05)'} },
+    y:{ ticks:{color:'#6B6860',font:{size:9}}, grid:{color:'rgba(0,0,0,.07)'} }
+  }
+});
+function doughnut(id, labels, data, colors) {
+  mk(id,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#6B6860',font:{size:10}}}}}});
+}
+
+// ── PANEL RIESGO ──────────────────────────────────────────────────────────────
+function renderRiesgo() {
+  const d = SEDE_ACTIVA === 'TODAS' ? {n:311,rg:72.0,prevs:GLOBAL_PREVS} : SEDE_DATA[SEDE_ACTIVA];
+  const fi = document.getElementById('fi-riesgo');
+  if (SEDE_ACTIVA !== 'TODAS') {
+    fi.textContent = 'Filtro activo: ' + SEDE_L[SEDE_ACTIVA] + ' — n = ' + d.n + ' estudiantes';
+    fi.classList.add('on');
+  } else { fi.classList.remove('on'); }
+
+  const nR = Math.round(d.rg/100*d.n);
+  document.getElementById('kpis-riesgo').innerHTML = `
+    <div class="kpi" style="border-left-color:#C62828"><div class="kpi-val" style="color:#C62828">${d.rg}%</div><div class="kpi-lab">Riesgo global</div><div class="kpi-sub">${nR} de ${d.n} estudiantes</div></div>
+    <div class="kpi" style="border-left-color:#D96A6A"><div class="kpi-val" style="color:#D96A6A">${d.prevs[1]}%</div><div class="kpi-lab">Salud mental</div><div class="kpi-sub">Subescala más crítica</div></div>
+    <div class="kpi" style="border-left-color:#D4A017"><div class="kpi-val" style="color:#D4A017">${d.prevs[4]}%</div><div class="kpi-lab">Nivel educativo</div><div class="kpi-sub">2° subescala de riesgo</div></div>
+    <div class="kpi" style="border-left-color:#4A90D9"><div class="kpi-val" style="color:#4A90D9">${d.prevs[0]}%</div><div class="kpi-lab">Uso de sustancias</div><div class="kpi-sub">Menor prevalencia</div></div>
+  `;
+
+  mk('c-global',{type:'doughnut',data:{
+    labels:['En riesgo ('+d.rg+'%)','Sin riesgo ('+(100-d.rg)+'%)'],
+    datasets:[{data:[d.rg,100-d.rg],backgroundColor:['#C62828','#6BAF6B'],borderWidth:2,borderColor:'#fff'}]
+  },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#6B6860',font:{size:11}}}}}});
+
+  mk('c-areas',{type:'bar',data:{
+    labels:['0','1','2','3','4','5','6','7'],
+    datasets:[{label:'Estudiantes',data:Object.values(N_AREAS),backgroundColor:'#4A90D9',borderRadius:5}]
+  },options:{...baseOpts(),plugins:{legend:{display:false}},
+    scales:{x:{title:{display:true,text:'N° de áreas en riesgo',color:'#6B6860',font:{size:10}},ticks:{color:'#6B6860'},grid:{color:'rgba(0,0,0,.05)'}},
+            y:{ticks:{color:'#6B6860'},grid:{color:'rgba(0,0,0,.07)'}}}}});
+
+  document.getElementById('sub-bars').innerHTML = LABELS.map((l,i) => {
+    const p = d.prevs[i]; const c = SUB_C[i];
+    return `<div class="sub-row">
+      <div class="sub-lbl">${l}</div>
+      <div class="sub-track"><div class="sub-fill" style="width:${p}%;background:${c}"></div></div>
+      <div class="sub-pct" style="color:${c}">${p}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ── PANEL SOCIO ───────────────────────────────────────────────────────────────
+function renderSocio() {
+  doughnut('c-sede',['Montería (201)','Berástegui (59)','Lorica (30)','Sahagún (21)'],[201,59,30,21],PAL2);
+  doughnut('c-sexo',['Femenino (160)','Masculino (150)','No binario (1)'],[160,150,1],['#E8763A','#4A90D9','#9B6BB5']);
+  mk('c-fac',{type:'bar',data:{
+    labels:['Ed./HH','Salud','Cs. Eco.','Ingen.','Cs. Bás.','Med. Vet.','Cs. Agr.'],
+    datasets:[{label:'n',data:[66,52,51,44,41,36,21],backgroundColor:PAL,borderRadius:4}]
+  },options:{...baseOpts(),indexAxis:'y',plugins:{legend:{display:false}}}});
+  doughnut('c-zona',['Urbano (172)','Rural (139)'],[172,139],['#4A90D9','#E8763A']);
+}
+
+// ── PANEL FAMILIA ─────────────────────────────────────────────────────────────
+function renderFamilia() {
+  mk('c-vive',{type:'bar',data:{
+    labels:['Ambos padres','Solo madre','Otros fam.','Solo padre','Solo/a'],
+    datasets:[{label:'n',data:[151,98,52,5,5],backgroundColor:PAL,borderRadius:5}]
+  },options:{...baseOpts(),plugins:{legend:{display:false}}}});
+
+  doughnut('c-serv',['Todos (189)','Algunos (118)','Ninguno (4)'],[189,118,4],['#6BAF6B','#D4A017','#C62828']);
+
+  mk('c-edu-madre',{type:'bar',data:{
+    labels:['Secundaria','Técnica','Sec. Incom.','Profesional','Prim. Incom.','Tecnológica'],
+    datasets:[{label:'n',data:[113,65,37,30,21,17],backgroundColor:'#4A90D9',borderRadius:4}]
+  },options:{...baseOpts(),indexAxis:'y',plugins:{legend:{display:false}}}});
+
+  mk('c-edu-padre',{type:'bar',data:{
+    labels:['Secundaria','Sec. Incom.','Profesional','Técnica','Tecnológica','Prim. Incom.'],
+    datasets:[{label:'n',data:[133,53,46,32,13,11],backgroundColor:'#E8763A',borderRadius:4}]
+  },options:{...baseOpts(),indexAxis:'y',plugins:{legend:{display:false}}}});
+}
+
+// ── PANEL HÁBITOS ─────────────────────────────────────────────────────────────
+function renderHabitos() {
+  doughnut('c-sueno',
+    ['Adecuado 8–10h (138)','Por debajo 6–7h (121)','Insuficiente <6h (26)','Excesivo >10h (1)'],
+    [138,121,26,1],['#6BAF6B','#D4A017','#C62828','#9B6BB5']);
+
+  mk('c-redes',{type:'bar',data:{
+    labels:['<1h','1–3h','4–6h','>6h'],
+    datasets:[{label:'Estudiantes',data:[20,154,111,26],
+      backgroundColor:['#6BAF6B','#D4A017','#E8763A','#C62828'],borderRadius:5}]
+  },options:{...baseOpts(),plugins:{legend:{display:false}}}});
+
+  mk('c-actfis',{type:'bar',data:{
+    labels:['Nunca','1–2x/sem','3–4x/sem','5+x/sem'],
+    datasets:[{label:'Estudiantes',data:[66,140,63,42],
+      backgroundColor:['#C62828','#D4A017','#6BAF6B','#4A90D9'],borderRadius:5}]
+  },options:{...baseOpts(),plugins:{legend:{display:false}}}});
+}
+
+// ── PANEL SEDES ───────────────────────────────────────────────────────────────
+function renderSedes() {
+  mk('c-sede-rg',{type:'bar',data:{
+    labels:['Montería','Berástegui','Lorica','Sahagún'],
+    datasets:[{label:'% Riesgo global',data:[67.7,84.7,70.0,81.0],
+      backgroundColor:[SEDE_C.MONTERIA,SEDE_C.BERASTEGUI,SEDE_C.LORICA,SEDE_C.SAHAGUN],borderRadius:6}]
+  },options:{...baseOpts(),plugins:{legend:{display:false}},
+    scales:{x:{ticks:{color:'#6B6860'},grid:{display:false}},
+            y:{ticks:{color:'#6B6860',callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.07)'},max:100}}}});
+
+  mk('c-medias',{type:'bar',data:{
+    labels:LABELS,
+    datasets:SEDES.map((s,i)=>({
+      label:SEDE_L[s],data:SEDE_DATA[s].medias,
+      backgroundColor:Object.values(SEDE_C)[i]+'BB',borderColor:Object.values(SEDE_C)[i],
+      borderWidth:1,borderRadius:3
+    }))
+  },options:{...baseOpts(),scales:{
+    x:{ticks:{color:'#6B6860',font:{size:9}},grid:{color:'rgba(0,0,0,.05)'}},
+    y:{ticks:{color:'#6B6860'},grid:{color:'rgba(0,0,0,.07)'}}}}});
+
+  // Heatmap
+  function hBg(v){
+    if(v>=60) return '#FFCDD2'; if(v>=45) return '#FFE0B2';
+    if(v>=30) return '#FFF9C4'; if(v>=15) return '#C8E6C9'; return '#E8F5E9';
+  }
+  function hC(v){
+    if(v>=60) return '#C62828'; if(v>=45) return '#E65100';
+    if(v>=30) return '#F57F17'; if(v>=15) return '#2E7D32'; return '#1B5E20';
+  }
+  let html=`<table class="ht"><thead><tr><th>Sede</th>`;
+  LABELS.forEach(l=>html+=`<th>${l}</th>`); html+=`</tr></thead><tbody>`;
+  SEDES.forEach(s=>{
+    html+=`<tr><td style="color:${SEDE_C[s]}">${SEDE_L[s]}</td>`;
+    SEDE_DATA[s].prevs.forEach(v=>{ html+=`<td style="background:${hBg(v)};color:${hC(v)}">${v}%</td>`; });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table>`;
+  document.getElementById('heatmap').innerHTML=html;
+}
+
+// ── TAB ROUTING ───────────────────────────────────────────────────────────────
+const inited={};
+function showTab(name,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('tab-'+name).classList.add('on');
+  el.classList.add('on');
+  // Filtro sede visible solo en riesgo
+  document.getElementById('filtro-bar').style.display = name==='riesgo'?'block':'none';
+  if(!inited[name]){
+    inited[name]=true;
+    if(name==='socio')   renderSocio();
+    if(name==='familia') renderFamilia();
+    if(name==='habitos') renderHabitos();
+    if(name==='sedes')   renderSedes();
+  }
+  if(name==='riesgo') renderRiesgo();
+}
+
+// Init
+inited['riesgo']=true;
+renderRiesgo();
+</script>
+</body>
+</html>
